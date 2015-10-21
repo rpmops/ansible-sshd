@@ -6,6 +6,6 @@
 
 - name: Restart sshd
   service:
-    name: 'ssh'
+    name: 'sshd'
     state: 'restarted'
 

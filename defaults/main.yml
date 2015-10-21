@@ -12,9 +12,7 @@
 # .. envvar:: sshd_base_packages
 #
 # List of base packages that should be installed for OpenSSH support.
-sshd_base_packages: [ 'openssh-server', 'openssh-client',
-                      'openssh-blacklist', 'openssh-blacklist-extra',
-                      'molly-guard' ]
+sshd_base_packages: [ 'openssh-server', 'openssh-clients' ]
 
 # .. envvar:: sshd_packages
 #
@@ -202,7 +200,7 @@ sshd_login_grace_time: '20s'
 # Specify if ``sshd`` should use unprivileged processes for incoming session
 # authentication. Setting this to ``sandbox`` enables use of additional
 # kernel restrictions.
-sshd_privilege_separation: 'sandbox'
+sshd_privilege_separation: 'yes'
 
 
 # .. envvar:: sshd_custom_options
@@ -260,7 +258,6 @@ sshd_authorized_keys_system:
 # the users themselves.
 sshd_authorized_keys_user:
   - '%h/.ssh/authorized_keys'
-  - '%h/.ssh/authorized_keys2'
 
 
 # ---------------------------------
@@ -300,188 +297,6 @@ sshd_known_hosts_file: '/etc/ssh/ssh_known_hosts'
 sshd_known_hosts_command: 'ssh-keyscan -H -T 10'
 
 
-# -------------------------
-#   Encryption parameters
-# -------------------------
-
-# .. envvar:: sshd_ciphers_map
-#
-# Dict with list of ciphers which should be used by the ``sshd`` server,
-# depending on available version, ordered from newest to oldest. Newer version
-# supersedes older version.
-sshd_ciphers_map:
-
-  # Source: https://wiki.mozilla.org/Security/Guidelines/OpenSSH
-  '6.5': [ 'chacha20-poly1305@openssh.com', 'aes256-gcm@openssh.com',
-           'aes128-gcm@openssh.com', 'aes256-ctr', 'aes192-ctr',
-           'aes128-ctr' ]
-
-  # Source: https://xivilization.net/~marek/blog/2015/01/12/secure-secure-shell-on-debian-wheezy/
-  '6.0': [ 'aes256-ctr', 'aes192-ctr', 'aes128-ctr' ]
-
-
-# .. envvar:: sshd_kex_algorithms_map
-#
-# Dict with list of key exchange algorithms which should be used by the
-# ``sshd`` server, depending on available version, ordered from newest to
-# oldest. Newer version supersedes older version.
-sshd_kex_algorithms_map:
-
-  # Source: https://wiki.mozilla.org/Security/Guidelines/OpenSSH
-  '6.5': [ 'curve25519-sha256@libssh.org', 'ecdh-sha2-nistp521',
-           'ecdh-sha2-nistp384', 'ecdh-sha2-nistp256',
-           'diffie-hellman-group-exchange-sha256' ]
-
-  # Source: https://xivilization.net/~marek/blog/2015/01/12/secure-secure-shell-on-debian-wheezy/
-  '6.0': [ 'diffie-hellman-group-exchange-sha256' ]
-
-
-# .. envvar:: sshd_macs_map
-#
-# Dict with list of message authentication code algorithms which should be used
-# by the ``sshd`` server, depending on available version, ordered from newest
-# to oldest. Newer version supersedes older version.
-sshd_macs_map:
-
-  # Source: https://wiki.mozilla.org/Security/Guidelines/OpenSSH
-  '6.5': [ 'hmac-sha2-512-etm@openssh.com', 'hmac-sha2-256-etm@openssh.com',
-           'umac-128-etm@openssh.com', 'hmac-sha2-512', 'hmac-sha2-256',
-           'umac-128@openssh.com' ]
-
-  # Source: https://xivilization.net/~marek/blog/2015/01/12/secure-secure-shell-on-debian-wheezy/
-  '6.0': [ 'hmac-sha2-512', 'hmac-sha2-256' , 'hmac-ripemd160' ]
-
-# .. envvar:: sshd_paranoid
-#
-# If set to True, only the first item (which is considered the strongest method
-# available) from the lists ``sshd_ciphers_map``,
-# ``sshd_kex_algorithms_map`` and ``sshd_macs_map`` will be configured for
-# ``sshd``. Use this with care as it will deny access to anyone not able to use
-# the first cryptographic method.
-# See https://github.com/debops/ansible-sshd/issues/20
-sshd_paranoid: False
-
-
-# ---------------------------------------
-#   Authorized key lookup configuration
-# ---------------------------------------
-
-# .. envvar:: sshd_authorized_keys_lookup
-#
-# Enable support for looking up authorized public keys in external data sources
-# (currently LDAP is supported). This function works only with OpenSSH 6.2+.
-sshd_authorized_keys_lookup: False
-
-
-# .. envvar:: sshd_authorized_keys_lookup_user
-#
-# System user account which will be used to look up authorized keys.
-sshd_authorized_keys_lookup_user: 'sshd-lookup'
-
-
-# .. envvar:: sshd_authorized_keys_lookup_group
-#
-# System group which will be used to look up authorized keys.
-sshd_authorized_keys_lookup_group: 'sshd-lookup'
-
-
-# .. envvar:: sshd_authorized_keys_lookup_home
-#
-# Home directory used by authorized key lookup user.
-sshd_authorized_keys_lookup_home: '/var/run/{{ sshd_authorized_keys_lookup_user }}'
-
-
-# .. envvar:: sshd_authorized_keys_lookup_type
-#
-# List of lookup scripts that should be enabled on a host.
-sshd_authorized_keys_lookup_type: [ 'ldap' ]
-
-
-# -----------------------------
-#   LDAP lookup configuration
-# -----------------------------
-
-# .. envvar:: sshd_ldap_domain
-#
-# Base DNS domain to use for LDAP BaseDN generation.
-sshd_ldap_domain: '{{ ansible_domain }}'
-
-
-# .. envvar:: sshd_ldap_base
-#
-# LDAP base used for BaseDN generation.
-sshd_ldap_base: '{{ "dc=" + sshd_ldap_domain.split(".") | join(",dc=") }}'
-
-
-# .. envvar:: sshd_ldap_bind_basedn
-#
-# LDAP BaseDN of the host account used to bind to the server.
-sshd_ldap_bind_basedn: '{{ "ou=Machines," + sshd_ldap_base }}'
-
-
-# .. envvar:: sshd_ldap_bind_cn
-#
-# Host account name in LDAP.
-sshd_ldap_bind_cn: 'cn={{ ansible_hostname }}'
-
-
-# .. envvar:: sshd_ldap_bind_dn
-#
-# Machine entry used to bind to the LDAP server.
-sshd_ldap_bind_dn: '{{ sshd_ldap_bind_cn + "," + sshd_ldap_bind_basedn }}'
-
-
-# .. envvar:: sshd_ldap_bind_basepw
-#
-# Base path to file with host LDAP password in ``secret/`` directory. See
-# ``debops.secret`` Ansible role for more details.
-sshd_ldap_bind_basepw: '{{ secret + "/credentials/" +
-                           ansible_fqdn + "/ldap/host/binddn/" +
-                           sshd_ldap_bind_dn + ".password" }}'
-
-
-# .. envvar:: sshd_ldap_bind_pw
-#
-# Machine password used for binding to LDAP database.
-sshd_ldap_bind_pw: '{{ lookup("password", sshd_ldap_bind_basepw +
-                       " length=" + sshd_ldap_password_length) }}'
-
-
-# .. envvar:: sshd_ldap_bind_pw_file
-#
-# Path to file which stores machine bind password on remote host.
-sshd_ldap_bind_pw_file: '/etc/ssh/ldap_authorized_keys_bindpw'
-
-
-# .. envvar:: sshd_ldap_password_length
-#
-# Length of generated LDAP machine password.
-sshd_ldap_password_length: '48'
-
-
-# .. envvar:: sshd_ldap_filter
-#
-# Active ``ldapsearch`` filter used to select correct account while looking up
-# the SSH public key.
-sshd_ldap_filter: '{{ sshd_ldap_filter_map["service+host"] }}'
-
-
-# .. envvar:: sshd_ldap_filter_map
-#
-# Dict with set of available LDAP filters that can be used to lookup the SSH
-# public key.
-sshd_ldap_filter_map:
-
-  # User account needs 'authorizedService' attribute
-  'service': '(&(objectClass=posixAccount)(uid=$username)(authorizedService=$service))'
-
-  # User account needs 'host' attribute
-  'host': '(&(objectClass=posixAccount)(uid=$username)(|(host=$hostname)(host=$fqdn)(host=\\*.$domain)(host=\\*)))'
-
-  # User account needs both 'authorizedService' and 'host' attributes.
-  'service+host': '(&(objectClass=posixAccount)(uid=$username)(authorizedService=$service)(|(host=$hostname)(host=$fqdn)(host=\\*.$domain)(host=\\*)))'
-
-
 # ----------------------------
 #   Match conditional blocks
 # ----------------------------
@@ -507,11 +322,9 @@ sshd_match_list: [ '{{ sshd_match_group_sftponly }}' ]
 sshd_match_group_sftponly:
   match: 'Group sftponly'
   options: |
-    AuthorizedKeysFile {{ sshd_authorized_keys_system | join(' ') }}
     ChrootDirectory %h
     X11Forwarding no
     AllowAgentForwarding no
     AllowTcpForwarding no
-    PermitTunnel no
     ForceCommand internal-sftp
 
